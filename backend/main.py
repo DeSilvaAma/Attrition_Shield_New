@@ -28,10 +28,10 @@ class PredictionRequest(BaseModel):
     recommend: str
     ceo: str
     outlook: str
-    worked_years: float
+    worked_years: str
     pros: str
     cons: str
-    title: str  # New text field
+    title: str  
 
 # --- Load Sentiment Model once at startup ---
 tokenizer, sent_model = load_sentiment_model("sentiment_model")

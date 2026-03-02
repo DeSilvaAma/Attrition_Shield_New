@@ -39,16 +39,29 @@ def get_sentiment_probs(text, tokenizer, model, device="cpu"):
 
 label_mapping = {"v": 3, "r": 2, "x": 1, "o": 0}
 
+tenure_mapping = {
+    "less than 1 year": 0.5,
+    "more than 1 year": 2.0,
+    "more than 3 year": 4.0,
+    "more than 5 year": 6.0,
+    "more than 8 year": 9.0,
+    "more than 10 year": 11.0
+}
+
 # --- FEATURE BUILDER ---
 
 def build_feature_vector(inputs, tokenizer, sent_model, device="cpu"):
     """
     Build features for the new LGBM model using pros, cons, and title feedback.
     """
-    # --- Map categorical variables ---
+    # --- Map categorical variables (Strict Lookup) ---
     rec = label_mapping[inputs["recommend"]]
     ceo_v = label_mapping[inputs["ceo"]]
     out_v = label_mapping[inputs["outlook"]]
+
+    # --- Map worked_years (Strict Lookup) ---
+    raw_tenure_str = str(inputs["worked_years"]).strip()
+    worked_years = tenure_mapping[raw_tenure_str] 
 
     # --- Sentiment analysis ---
     pros_p = get_sentiment_probs(inputs["pros"], tokenizer, sent_model, device)
@@ -70,14 +83,13 @@ def build_feature_vector(inputs, tokenizer, sent_model, device="cpu"):
     diversity = inputs["diversity"]
     senior = inputs["senior"]
     wlb = inputs["wlb"]
-    worked_years = inputs["worked_years"]  # No scaling
 
-    # --- Derived features ---
-    employee_satisfaction = ((comp + wlb)/2) * overall_sentiment
-    culture_to_pay_ratio = culture / (comp if comp != 0 else 1)
+    # --- Derived features (Simplified: No zero-checks needed for 1-5 scales) ---
+    employee_satisfaction = ((comp + wlb) / 2) * overall_sentiment
+    culture_to_pay_ratio = culture / comp
     culture_outlook_alignment = culture * out_v
     tenure_growth_score = worked_years * career
-    recommended_satisfaction = rec * ((comp + wlb)/2 * overall_sentiment)
+    recommended_satisfaction = rec * ((comp + wlb) / 2 * overall_sentiment)
     inclusion_culture_score = culture * diversity
     executive_trust = ceo_v * senior
     satisfaction_summary = rating * title_sentiment
